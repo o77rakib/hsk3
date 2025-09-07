@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HSK 3 Calculator - Dark/Light Fix</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Product+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Product Sans',sans-serif;background:#000;color:#fff;overflow-x:hidden;transition:all 0.5s;}
+.glass{position:relative;backdrop-filter:blur(25px) saturate(180%);background:rgba(255,255,255,0.12);border-radius:24px;border:1px solid rgba(255,255,255,0.2);box-shadow:0 10px 50px rgba(255,255,255,0.1);padding:2rem;margin:2rem auto;max-width:900px;transition:all 0.4s ease-in-out;overflow:hidden;}
+.inputs-flex{display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;align-items:center;margin:1rem 0;}
+.inputs-flex>div{display:flex;flex-direction:column;align-items:center;}
+.inputs-flex>div input[type=number]{width:100px;padding:0.5rem;text-align:center;backdrop-filter:blur(12px) saturate(180%);background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.3);border-radius:16px;color:#fff;box-shadow:0 4px 12px rgba(255,255,255,0.2);transition:all 0.25s;}
+.inputs-flex>div input[type=range]{width:100px;cursor:pointer;}
+.inputs-flex>div label{margin-bottom:0.2rem;font-weight:500;}
+.glass-btn{backdrop-filter:blur(20px) saturate(180%);background:rgba(255,255,255,0.18);border-radius:16px;border:1px solid rgba(255,255,255,0.3);padding:0.5rem 1rem;font-weight:600;color:#fff;text-align:center;cursor:pointer;transition:all 0.25s;position:relative;overflow:hidden;box-shadow:0 4px 12px rgba(255,255,255,0.2);}
+.glass-btn:hover{background:rgba(255,255,255,0.25);transform:scale(1.05);}
+.glass-btn:active{animation:bounce 0.4s;}
+@keyframes bounce{0%{transform:scale(0.95);}50%{transform:scale(1.1);}100%{transform:scale(1);}}
+.glass-btn:after{content:"";position:absolute;width:100%;height:100%;top:0;left:0;opacity:0;background:rgba(255,255,255,0.2);pointer-events:none;}
+.glass-btn:active:after{animation:ripple 0.6s ease-out forwards;}
+@keyframes ripple{0%{opacity:0.6;transform:scale(0);}100%{opacity:0;transform:scale(2);}}
+table{border-collapse:collapse;width:100%;max-width:900px;margin:1rem auto;font-size:16px;transition:all 0.3s;}
+th,td{border:1px solid rgba(255,255,255,0.25);padding:0.5rem;text-align:center;transition:all 0.3s;}
+th{background:rgba(255,255,255,0.15);}
+.switch{position:relative;display:inline-block;width:50px;height:26px;}
+.switch input{display:none;}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#ccc;border-radius:50px;transition:0.4s;}
+.slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:white;border-radius:50%;transition:0.4s;}
+input:checked + .slider{background-color:#4ade80;}
+input:checked + .slider:before{transform:translateX(24px);}
+#settingsPanel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,0.1);backdrop-filter:blur(20px);padding:2rem;border-radius:24px;box-shadow:0 20px 50px rgba(0,0,0,0.3);display:none;flex-direction:column;gap:1rem;max-width:400px;z-index:999;transition:all 0.3s;}
+#settingsPanel label{font-weight:500;color:#fff;}
+#settingsPanel input[type=color], #settingsPanel input[type=number]{width:100%;padding:0.3rem;border-radius:12px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.18);color:#fff;}
+#settingsPanel button{cursor:pointer;}
+.bubble{position:absolute;background:rgba(255,255,255,0.15);border-radius:50%;animation:floatBubble linear infinite;}
+@keyframes floatBubble{0%{transform:translateY(100%) scale(1);opacity:0.3;}50%{opacity:0.5;}100%{transform:translateY(-100%) scale(0.8);opacity:0;}}
+#bubbles{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:-1;}
+@media(max-width:600px){.inputs-flex{flex-direction:column;}.inputs-flex>div input{width:80%;}.glass{padding:1rem;}}
+</style>
+</head>
+<body>
+<div id="bubbles"></div>
+
+<div class="glass">
+  <div style="position:absolute;top:1rem;right:1rem;display:flex;gap:0.5rem;align-items:center;z-index:10;">
+    <span>🌙</span>
+    <label class="switch">
+      <input type="checkbox" id="modeToggle">
+      <span class="slider"></span>
+    </label>
+    <span>☀️</span>
+    <div class="glass-btn" id="settingsBtn">⚙️</div>
+  </div>
+
+  <h1 class="text-2xl font-bold text-center mb-6">🎓 HSK 3 Test Result</h1>
+
+  <div class="inputs-flex">
+    <div>
+      <label>🎧 Listening (0-40)</label>
+      <input type="number" id="listening" max="40" min="0" value="0">
+      <input type="range" id="listeningRange" max="40" min="0" value="0">
+    </div>
+    <div>
+      <label>📖 Reading (0-30)</label>
+      <input type="number" id="reading" max="30" min="0" value="0">
+      <input type="range" id="readingRange" max="30" min="0" value="0">
+    </div>
+    <div>
+      <label>✍ Writing (0-10)</label>
+      <input type="number" id="writing" max="10" min="0" value="0">
+      <input type="range" id="writingRange" max="10" min="0" value="0">
+    </div>
+  </div>
+
+  <div class="flex gap-3 flex-wrap justify-center">
+    <div class="glass-btn" onclick="calculateResult()">Calculate</div>
+    <div class="glass-btn" onclick="clearHistory()">Clear History</div>
+    <div class="glass-btn" onclick="printHistory()">Print</div>
+    <div class="glass-btn" onclick="saveHistoryPDF()">Save PDF</div>
+    <div class="glass-btn" onclick="saveHistoryJPG()">Save JPG</div>
+  </div>
+
+  <div id="output" class="mt-6 text-center font-medium"></div>
+
+  <div class="mt-8 overflow-x-auto">
+    <table id="historyTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Listening</th>
+          <th>Reading</th>
+          <th>Writing</th>
+          <th>Total</th>
+          <th>%</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="settingsPanel">
+  <h2 class="text-lg font-bold text-center">Settings</h2>
+  <label>Background Color</label>
+  <input type="color" id="bgColor" value="#000000">
+  <label>Text Color</label>
+  <input type="color" id="textColor" value="#ffffff">
+  <label>Button Text Color</label>
+  <input type="color" id="btnTextColor" value="#ffffff">
+  <label>Border Radius (px)</label>
+  <input type="number" id="borderRadius" value="24">
+  <label>Font Size (px)</label>
+  <input type="number" id="fontSize" value="16">
+  <button class="glass-btn" id="closeSettings">Close Settings</button>
+</div>
+
+<script>
+// Bubbles
+const bubblesContainer=document.getElementById('bubbles');
+const createBubble=()=>{const bubble=document.createElement('div');bubble.classList.add('bubble');const size=Math.random()*20+10;bubble.style.width=`${size}px`;bubble.style.height=`${size}px`;bubble.style.left=`${Math.random()*100}%`;bubble.style.animationDuration=`${Math.random()*10+5}s`;bubble.style.opacity=Math.random()*0.3+0.2;bubblesContainer.appendChild(bubble);setTimeout(()=>bubble.remove(),15000);}
+setInterval(createBubble,400);
+
+// Sync sliders & inputs
+const syncInput=(numInput,rangeInput)=>{numInput.addEventListener('input',()=>{rangeInput.value=numInput.value;});rangeInput.addEventListener('input',()=>{numInput.value=rangeInput.value;});}
+syncInput(document.getElementById('listening'),document.getElementById('listeningRange'));
+syncInput(document.getElementById('reading'),document.getElementById('readingRange'));
+syncInput(document.getElementById('writing'),document.getElementById('writingRange'));
+
+// History
+function renderHistory(){
+  const history=JSON.parse(localStorage.getItem('hskHistory'))||[];
+  const tbody=document.getElementById('historyBody');
+  tbody.innerHTML=history.map(r=>`<tr style="border-color:${r.borderColor}"><td>${r.date}</td><td>${r.listening}</td><td>${r.reading}</td><td>${r.writing}</td><td>${r.total}</td><td>${r.percentage}%</td><td style="color:${r.status==='Pass'?'#4ade80':'#f87171'}">${r.status}</td></tr>`).join('');
+}
+renderHistory();
+
+// Calculate
+function calculateResult(){
+  const l=parseFloat(document.getElementById('listening').value)||0;
+  const r=parseFloat(document.getElementById('reading').value)||0;
+  const w=parseFloat(document.getElementById('writing').value)||0;
+  if(l>40||r>30||w>10){document.getElementById('output').innerHTML='<span style="color:#f87171;font-weight:bold">⚠️ Enter valid scores</span>';return;}
+  const l100=(l/40*100).toFixed(2),r100=(r/30*100).toFixed(2),w100=(w/10*100).toFixed(2);
+  const total=(parseFloat(l100)+parseFloat(r100)+parseFloat(w100)).toFixed(2);
+  const percentage=(total/300*100).toFixed(2);
+  const status=total>=180?'Pass':'Fail';
+  document.getElementById('output').innerHTML=`🎧 Listening: ${l100}/100<br>📖 Reading: ${r100}/100<br>✍ Writing: ${w100}/100<br><br><span style="color:#4ade80;font-weight:bold">Total: ${total}/300</span><br>📊 Percentage: ${percentage}%<br><br>Result: ${status==='Pass'?'✅ Pass':'❌ Fail'}`;
+  const result={date:new Date().toLocaleString(),listening:l100,reading:r100,writing:w100,total,percentage,status,borderColor:getComputedStyle(document.body).backgroundColor};
+  let history=JSON.parse(localStorage.getItem('hskHistory'))||[];history.unshift(result);localStorage.setItem('hskHistory',JSON.stringify(history));
+  renderHistory();
+}
+
+// Clear, Print, Save PDF/JPG
+function clearHistory(){localStorage.removeItem('hskHistory');renderHistory();}
+function printHistory(){const printContents=document.getElementById('historyTable').outerHTML;const newWin=window.open('','width=900,height=600');newWin.document.write('<html><head><title>Print History</title>');newWin.document.write('<style>table{width:100%;border-collapse:collapse;}th,td{border:1px solid #000;padding:8px;text-align:center;} </style>');newWin.document.write('</head><body>');newWin.document.write('<h2>HSK 3 Result History</h2>');newWin.document.write(printContents);newWin.document.write('</body></html>');newWin.document.close();newWin.print();}
+function saveHistoryPDF(){html2canvas(document.getElementById('historyTable')).then(canvas=>{const {jsPDF}=window.jspdf;const pdf=new jsPDF('p','pt','a4');pdf.addImage(canvas.toDataURL('image/png'),0,0);pdf.save('HSK3_History.pdf');});}
+function saveHistoryJPG(){html2canvas(document.getElementById('historyTable')).then(canvas=>{const link=document.createElement('a');link.download='HSK3_History.jpg';link.href=canvas.toDataURL('image/jpeg',1.0);link.click();});}
+
+// Enter key support
+['listening','reading','writing'].forEach(id=>{document.getElementById(id).addEventListener('keypress',e=>{if(e.key==='Enter'){calculateResult();}});});
+
+// Settings panel
+const settingsBtn=document.getElementById('settingsBtn');
+const settingsPanel=document.getElementById('settingsPanel');
+const closeSettings=document.getElementById('closeSettings');
+settingsBtn.addEventListener('click',()=>settingsPanel.style.display='flex');
+closeSettings.addEventListener('click',()=>settingsPanel.style.display='none');
+
+// Settings live update
+document.getElementById('bgColor').addEventListener('input',e=>{document.body.style.background=e.target.value;});
+document.getElementById('textColor').addEventListener('input',e=>{document.body.style.color=e.target.value;document.querySelectorAll('input,table,.glass-btn, label').forEach(el=>el.style.color=e.target.value);});
+document.getElementById('btnTextColor').addEventListener('input',e=>{document.querySelectorAll('.glass-btn').forEach(el=>el.style.color=e.target.value);});
+document.getElementById('borderRadius').addEventListener('input',e=>{document.querySelectorAll('.glass, .glass-btn, #settingsPanel, input[type=number], input[type=range]').forEach(el=>el.style.borderRadius=e.target.value+'px');});
+document.getElementById('fontSize').addEventListener('input',e=>{document.querySelectorAll('table, #output, label').forEach(el=>el.style.fontSize=e.target.value+'px');});
+
+// Dark/Light toggle auto text & shadow
+document.getElementById('modeToggle').addEventListener('change',e=>{
+  const dark=e.target.checked?false:true;
+  if(dark){
+    // Dark mode
+    document.body.style.background='#000';
+    document.body.style.color='#fff';
+    document.querySelectorAll('input, table, .glass-btn, label, th, td').forEach(el=>{
+      if(el.tagName==='TD' || el.tagName==='TH'){
+        el.style.color='#fff';
+        el.style.borderColor='rgba(255,255,255,0.25)';
+        el.style.boxShadow='0 4px 12px rgba(255,255,255,0.2)';
+      } else{
+        el.style.color='#fff';
+        el.style.boxShadow='0 4px 12px rgba(255,255,255,0.2)';
+      }
+    });
+  } else {
+    // Light mode
+    document.body.style.background='#fff';
+    document.body.style.color='#000';
+    document.querySelectorAll('input, table, .glass-btn, label, th, td').forEach(el=>{
+      if(el.tagName==='TD' || el.tagName==='TH'){
+        el.style.color='#000';
+        el.style.borderColor='rgba(0,0,0,0.25)';
+        el.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';
+      } else{
+        el.style.color='#000';
+        el.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';
+      }
+    });
+  }
+});
+</script>
+</body>
+</html>
